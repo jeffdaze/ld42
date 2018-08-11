@@ -24,6 +24,13 @@ var init = function(){
 var INTRO = {
 	create: function(){
 		console.log("ran create...");
+
+		//text...
+		var text = "The Syncope Device";
+		var style = { font: "24px 'Press Start 2P'", fill: "#ff0044", align: "center" };
+		game.add.text(300, 350, text, style);
+
+
 		var graphics = game.add.graphics(100, 100);
 
 		// set a fill and line style
