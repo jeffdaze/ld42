@@ -228,8 +228,7 @@ var MAINGAME = {
 			function down(item){
 				nukeInfo();
 				//renderInfo(item);
-
-				//renderActions(item);
+				renderActions(item);
 			}
 
 			function out(item){
@@ -244,6 +243,12 @@ var MAINGAME = {
 				//travel.destroy();
 				//dock.destroy();
 				graphics.destroy();
+			}
+
+			function renderActions(item) {
+				//this will show the menu for the user to interact at a particular star system...
+				console.log("ran render actions...");
+
 			}
 
 			function renderInfo(item) {
