@@ -17,10 +17,16 @@ player.credits = 10000;
 player.deviceParts = 0;
 player.crew = [];
 player.ship = {};
+player.ship.name = "Hyperion";
+player.ship.range = 100;
+player.ship.fuel = 100;
+player.ship.capacity = 1000;
+
 player.location = {};
 
 var galaxy = {};
 galaxy.starSystems = [];
+galaxy.currentView = {};
 
 window.onload = function(){
 	init();
@@ -163,23 +169,10 @@ var MAINGAME = {
 
 
 		//render some stars...
-
-		//starfield_base = game.make.bitmapData();
-
-		//starfield_base.load('starfieldBase');
-
-
-		//var sprite = starfield_base.addToWorld(game.world.centerX, game.world.centerY, 0.5, 0.5, 1, 1);
-		//sprite.smoothed = false;
-
-
 		//base starfield...
 		var starfield_base = game.add.sprite(0, 0, 'starfieldBase');
-
 		var tween = game.add.tween(starfield_base).to( { x: 5 }, 5000, "Linear", true, 0, -1);
-
 		tween.yoyo(true, 6000);
-
 
 		//color accents...
 		var starfield_accents = game.add.sprite(0,0, 'starfieldAccent');
@@ -187,21 +180,25 @@ var MAINGAME = {
 		tween.yoyo(true, 4000);
 
 
+		//render starsystems, their data and mouseover states...
+		//need to re-run this every time we update the player starsystem location
 		for(var x=0;x<galaxy.starSystems.length;x++){
 			var star = game.add.sprite(galaxy.starSystems[x].x, galaxy.starSystems[x].y, 'bluestar');
 
 			let starName = galaxy.starSystems[x].name;
 
-			let statusInfo = "";
+			let commodities = galaxy.starSystems[x].commodities;
+
+			let currentSystem = "";
 
 			//highlite the player current planet..
 			if(player.location.name == galaxy.starSystems[x].name){
 
 				var reticle = game.add.graphics(player.location.x, player.location.y);
 				reticle.lineStyle(1, 0xFFFFFF, 1);
-				reticle.drawRect(-5, -5, 36, 36);
+				reticle.drawRect(-6, -5, 36, 36);
 
-				statusInfo += "Current \nSystem";
+				currentSystem = "Current \nSystem\n";
 
 			};
 
@@ -212,14 +209,24 @@ var MAINGAME = {
 			star.events.onInputOut.add(out, this);
 			star.events.onInputDown.add(down, this);
 
+			//system mouseovers...
 			var systemName = null;
 			var graphics = null;
 
 			var status = null;
 
+			var economy = null;
+
 			var travel = null;
 			var dock = null;
 			var close = null;
+
+
+			var line = null;
+
+
+			//click actions menu...
+			var systemView = null;
 
 			 function over(item){
 				 renderInfo(item);
@@ -239,15 +246,64 @@ var MAINGAME = {
 			function nukeInfo(){
 				systemName.destroy();
 				status.destroy();
+				game.debug.reset();
+
+				//economy.destroy();
 				//close.destroy();
 				//travel.destroy();
 				//dock.destroy();
 				graphics.destroy();
 			}
 
+			function nukeSystemInfo(){
+				systemView.destroy();
+			}
+
 			function renderActions(item) {
 				//this will show the menu for the user to interact at a particular star system...
-				console.log("ran render actions...");
+				systemView = game.add.graphics(20, 20);
+
+				// set a fill and line style
+				systemView.beginFill(0x333333);
+				systemView.lineStyle(10, 0xffffff, 1);
+
+				// draw a rectangle
+				systemView.lineStyle(1, 0xFFFFFF, 1);
+				systemView.drawRect(0, 0, 900, 600);
+				systemView.endFill();
+
+				systemView.alpha = 0.9;
+
+
+				var style1 = {font: "24px 'Press Start 2P'", fill: "#ffffff", align: "left"};
+				var style2 = {font: "12px 'Press Start 2P'", fill: "#ffffff", align: "left"};
+
+				//add system name...
+				economy = game.make.text(50, 10, starName, style1);
+				systemView.addChild(economy);
+
+				//render the commodities list for this planet...
+				 var commodityBuffer = "";
+				 for(var thing in commodities){
+					 //render commodity line items...
+					 commodityBuffer += thing+"\n";
+					 commodityBuffer += " Units:"+commodities[thing].count;
+					 commodityBuffer += " Price:"+commodities[thing].value +"\n\n";
+				 }
+
+
+				economy = game.make.text(50, 50, commodityBuffer, style2);
+				systemView.addChild(economy);
+
+				systemView.inputEnabled = true;
+
+				//temporary; here to remove the overlay
+				//real buttons will be added to travel to this system and dock with it to interact...
+				systemView.events.onInputDown.add(systemDown, this);
+
+				function systemDown(item){
+					item.destroy();
+				}
 
 			}
 
@@ -262,7 +318,7 @@ var MAINGAME = {
 
 				// draw a rectangle
 				graphics.lineStyle(1, 0xFFFFFF, 1);
-				graphics.drawRect(30, -10, 100, 150);
+				graphics.drawRect(30, -10, 130, 100);
 				graphics.endFill();
 
 				graphics.alpha = 0.4;
@@ -270,15 +326,49 @@ var MAINGAME = {
 				//graphics.inputEnabled=true;
 				//graphics.input.useHandCursor = true;
 
+				//plot travel line...
+				line = new Phaser.Line(player.location.x + 13, player.location.y + 13, item.x + 13, item.y + 13);
+
+				//draw our line from the current system to the target...
+				game.debug.geom(line);
+
+
+				var dist = "";
+
+				if(Math.floor(line.length) > 0){
+					dist = "Distance:\n"+ Math.floor(line.length)+" Parsecs";
+				}
+
 				var textXoffset = 34;
 
 				var style = {font: "12px 'Press Start 2P'", fill: "#ffffff", align: "left"};
 
 				var style2 = {font: "10px 'Press Start 2P'", fill: "#ffffff", align: "left"};
 
+
+
 				systemName = game.add.text(item.x + textXoffset, item.y - 22, starName, style);
 
-				status = game.add.text(item.x + textXoffset + 5, item.y + 10, statusInfo, style2);
+				status = game.add.text(item.x + textXoffset + 5, item.y + 10, currentSystem+ dist , style2);
+
+
+
+
+				/*
+				var commodityBuffer = "";
+				for(var thing in commodities){
+
+					console.log(thing);
+
+					//render commodity line items...
+					commodityBuffer += thing;
+					commodityBuffer += " Units:"+commodities[thing].count;
+					commodityBuffer += " Price:"+commodities[thing].value +"\n";
+				}
+
+				economy = game.add.text(item.x + textXoffset + 5, item.y + 30, commodityBuffer, style3);
+				*/
+
 
 				/*
 				close = game.add.text(item.x + 116, item.y - 10, "x", style);
@@ -389,12 +479,28 @@ var starNames = [
 	'Wezen'
 ];
 
+//base commodities...
+var commodities = [
+	'MRE Rations',
+	'HyperSteele',
+	'NanoCarbon',
+	'Quantum Processors',
+	'Crystal Mix',
+	'Laser Generators',
+	'Servos',
+	'Solenoids',
+	'Magnetrons',
+	'Psychometrics'
+];
+
+
 //might seed this so it can be replayed?
 function generateGalaxy(size){
 
 	for(var x=0;x<size;x++){
 		var ssgen = {};
 
+		//generate names...
 		ssgen.name = randArrayElement(starNames);
 		//make sure we get unique names; remove any found names from the original array...
 		var index = starNames.indexOf(ssgen.name);
@@ -402,14 +508,41 @@ function generateGalaxy(size){
 			starNames.splice(index, 1);
 		}
 
+		//generate locations...
 		ssgen.x = getRandomIntInclusive(100, 850);
 		ssgen.y = getRandomIntInclusive(100, 600);
+
+		//generate economy...
+		//copy base commodities; all systems have listings for all commodities...
+		ssgen.commodities = {};
+
+		for(var y=0;y<commodities.length;y++){
+			ssgen.commodities[commodities[y]] = {
+				count: getRandomIntInclusive(0, 10000),
+				value: getRandomIntInclusive(10, 500)
+			};
+		}
+
 
 		galaxy.starSystems.push(ssgen);
 	}
 
 
 }
+
+//base commodities...
+var commodities = [
+	'MRE Rations',
+	'HyperSteele',
+	'NanoCarbon',
+	'Quantum Processors',
+	'Crystal Mix',
+	'Laser Generators',
+	'Servos',
+	'Solenoids',
+	'Magnetrons',
+	'Psychometrics'
+];
 
 
 //RANDOM METHODS...
